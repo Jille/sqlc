@@ -122,7 +122,7 @@ func (q *Queries) CreateAuthorAndReturnId(ctx context.Context, arg CreateAuthorA
 
 ## Using CopyFrom
 
-PostgreSQL supports the Copy Protocol that can insert rows a lot faster than sequential inserts. You can use this easily with sqlc:
+PostgreSQL supports the Copy Protocol and MySQL has LOAD DATA LOCAL INFILE which can insert rows a lot faster than sequential inserts. You can use this easily with sqlc:
 
 ```sql
 CREATE TABLE authors (
@@ -145,3 +145,11 @@ func (q *Queries) CreateAuthors(ctx context.Context, arg []CreateAuthorsParams) 
 	return q.db.CopyFrom(ctx, []string{"authors"}, []string{"name", "bio"}, &iteratorForCreateAuthors{rows: arg})
 }
 ```
+
+Support for MySQL LOAD DATA INFILE has a few limitations:
+
+* The only supported MySQL driver is https://github.com/go-sql-driver/mysql. You need to set `sql_package: "go-sql-driver/mysql"` to use it.
+* It doesn't handle timezones yet. For now we simply disallow usage with any time.Time values.
+* LOAD DATA LOCAL INFILE is not atomic. Errors and duplicate keys are treated as warnings and insertion will continue, even without an error for some cases.
+  Use this in a transaction and use SHOW WARNINGS to check for any problems and roll back if you want to.
+  This is a MySQL limitation, not sqlc. Check the documentation for more information: https://dev.mysql.com/doc/refman/8.0/en/load-data.html#load-data-error-handling
